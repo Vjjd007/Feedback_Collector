@@ -22,7 +22,7 @@ create table if not exists institutions (
 create table if not exists users (
   id text primary key,
   institution_id text references institutions(id) on delete cascade,
-  role text not null check (role in ('student', 'admin', 'super_admin')),
+  role text not null check (role in ('student', 'admin', 'teacher', 'super_admin')),
   full_name text not null,
   email text not null unique,
   login_id text not null unique,
@@ -32,9 +32,12 @@ create table if not exists users (
   year text,
   section text,
   register_number text,
+  teacher_id text,
   phone text,
   created_at timestamptz not null default now()
 );
+
+alter table users add column if not exists teacher_id text;
 
 create table if not exists departments (
   id text primary key,
@@ -82,6 +85,30 @@ create table if not exists responses (
   submitted_at timestamptz not null default now()
 );
 
+alter table institutions enable row level security;
+alter table users enable row level security;
+alter table departments enable row level security;
+alter table teachers enable row level security;
+alter table forms enable row level security;
+alter table responses enable row level security;
+
+drop policy if exists institutions_demo_policy on institutions;
+drop policy if exists users_demo_policy on users;
+drop policy if exists departments_demo_policy on departments;
+drop policy if exists teachers_demo_policy on teachers;
+drop policy if exists forms_demo_policy on forms;
+drop policy if exists responses_demo_policy on responses;
+
+create policy institutions_demo_policy on institutions for all to anon, authenticated using (true) with check (true);
+create policy users_demo_policy on users for all to anon, authenticated using (true) with check (true);
+create policy departments_demo_policy on departments for all to anon, authenticated using (true) with check (true);
+create policy teachers_demo_policy on teachers for all to anon, authenticated using (true) with check (true);
+create policy forms_demo_policy on forms for all to anon, authenticated using (true) with check (true);
+create policy responses_demo_policy on responses for all to anon, authenticated using (true) with check (true);
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on institutions, users, departments, teachers, forms, responses to anon, authenticated;
+
 create index if not exists idx_users_institution_role on users(institution_id, role);
 create index if not exists idx_teachers_institution on teachers(institution_id);
 create index if not exists idx_forms_institution on forms(institution_id);
@@ -93,12 +120,15 @@ values
   ('inst_ksrct', 'K.S. Rangasamy College of Technology', 'KSRCT001', 'admin@ksrct.edu.in', '+91 4288 274 741', 'Tiruchengode, Namakkal, Tamil Nadu', 'active', 'Pro', 'KS', now())
 on conflict (id) do nothing;
 
-insert into users (id, institution_id, role, full_name, email, login_id, password, status, department, year, section, register_number, phone, created_at)
+insert into users (id, institution_id, role, full_name, email, login_id, password, status, department, year, section, register_number, teacher_id, phone, created_at)
 values
-  ('usr_admin', 'inst_ksrct', 'admin', 'Institution Admin', 'admin@ksrct.edu.in', 'ADMIN', 'Admin@123', 'active', null, null, null, null, null, now()),
-  ('usr_stu1', 'inst_ksrct', 'student', 'Vijay S', 'vijay@ksrct.edu.in', '22AIML101', 'Temp@123', 'active', 'CSE (AIML)', '2', 'A', '22AIML101', '', now()),
-  ('usr_stu2', 'inst_ksrct', 'student', 'Abishek S', 'abishek@ksrct.edu.in', '22AIML102', 'Temp@123', 'active', 'CSE (AIML)', '2', 'A', '22AIML102', '', now()),
-  ('usr_super', null, 'super_admin', 'Super Admin', 'super@edusphere.ai', 'SUPER', 'Super@123', 'active', null, null, null, null, null, now())
+  ('usr_admin', 'inst_ksrct', 'admin', 'Institution Admin', 'admin@ksrct.edu.in', 'ADMIN', 'Admin@123', 'active', null, null, null, null, null, null, now()),
+  ('usr_stu1', 'inst_ksrct', 'student', 'Vijay S', 'vijay@ksrct.edu.in', '22AIML101', 'Temp@123', 'active', 'CSE (AIML)', '2', 'A', '22AIML101', null, '', now()),
+  ('usr_stu2', 'inst_ksrct', 'student', 'Abishek S', 'abishek@ksrct.edu.in', '22AIML102', 'Temp@123', 'active', 'CSE (AIML)', '2', 'A', '22AIML102', null, '', now()),
+  ('usr_tch_kumar', 'inst_ksrct', 'teacher', 'Dr. R. Kumar', 'kumar@ksrct.edu.in', 'KSRCT-F101', 'Temp@123', 'active', 'CSE (AIML)', null, null, null, 'tch_kumar', '9840000001', now()),
+  ('usr_tch_priya', 'inst_ksrct', 'teacher', 'Ms. S. Priya', 'priya@ksrct.edu.in', 'KSRCT-F102', 'Temp@123', 'active', 'CSE (AIML)', null, null, null, 'tch_priya', '9840000002', now()),
+  ('usr_tch_ravi', 'inst_ksrct', 'teacher', 'Mr. K. Ravi', 'ravi@ksrct.edu.in', 'KSRCT-F103', 'Temp@123', 'active', 'ECE', null, null, null, 'tch_ravi', '9840000003', now()),
+  ('usr_super', null, 'super_admin', 'Super Admin', 'super@edusphere.ai', 'SUPER', 'Super@123', 'active', null, null, null, null, null, null, now())
 on conflict (id) do nothing;
 
 insert into departments (id, institution_id, name, hod, created_at)

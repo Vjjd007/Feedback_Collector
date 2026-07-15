@@ -1,308 +1,8 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Feedback System — Institution Feedback Management</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-/* ============================================================
-  FEEDBACK SYSTEM — DESIGN TOKENS
-   Concept: the campus ledger. Ratings recorded like a registrar's
-   grade book; a wax-seal stamp marks a response as "recorded".
-   ============================================================ */
-:root{
-  --ink:#0E1626;
-  --navy:#16233D;
-  --navy-2:#1D2E4D;
-  --parchment:#F6F4EE;
-  --parchment-2:#EDE9DC;
-  --line:#DAD4C2;
-  --line-dark:rgba(246,244,238,0.14);
-  --brass:#C9A227;
-  --brass-ink:#5C4A0F;
-  --teal:#2F6F62;
-  --teal-ink:#EAF2EF;
-  --rust:#B65C3A;
-  --rust-ink:#FBEBE4;
-  --ink-70:rgba(14,22,38,0.7);
-  --ink-50:rgba(14,22,38,0.5);
-  --paper-70:rgba(246,244,238,0.7);
-  --paper-50:rgba(246,244,238,0.5);
-  --radius:14px;
-  --radius-lg:20px;
-  --shadow-soft:0 1px 2px rgba(14,22,38,0.06), 0 8px 24px -8px rgba(14,22,38,0.18);
-  --shadow-deep:0 20px 60px -20px rgba(14,22,38,0.45);
-  --font-display:'Fraunces', serif;
-  --font-body:'Inter', sans-serif;
-  --font-mono:'JetBrains Mono', monospace;
-}
-*{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{margin:0;font-family:var(--font-body);background:var(--parchment);color:var(--ink);-webkit-font-smoothing:antialiased;}
-@media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
-h1,h2,h3,h4{font-family:var(--font-display);margin:0;font-weight:600;letter-spacing:-0.01em;}
-p{margin:0;line-height:1.55;}
-a{color:inherit;text-decoration:none;}
-button{font-family:var(--font-body);cursor:pointer;}
-input,select,textarea{font-family:var(--font-body);}
-::selection{background:var(--brass);color:var(--ink);}
-.mono{font-family:var(--font-mono);letter-spacing:0.02em;}
-.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--brass-ink);}
-
-/* ---------- layout helpers ---------- */
-.container{max-width:1180px;margin:0 auto;padding:0 28px;}
-.hide{display:none !important;}
-.row{display:flex;align-items:center;}
-.between{justify-content:space-between;}
-.gap-8{gap:8px;} .gap-12{gap:12px;} .gap-16{gap:16px;} .gap-24{gap:24px;}
-.wrap{flex-wrap:wrap;}
-.grid{display:grid;gap:20px;}
-
-/* ---------- buttons ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:10px;border:1px solid transparent;font-size:14px;font-weight:600;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;white-space:nowrap;}
-.btn:active{transform:translateY(1px);}
-.btn-primary{background:var(--ink);color:var(--parchment);}
-.btn-primary:hover{background:var(--navy);box-shadow:var(--shadow-soft);}
-.btn-brass{background:var(--brass);color:var(--brass-ink);}
-.btn-brass:hover{box-shadow:0 8px 20px -6px rgba(201,162,39,0.55);}
-.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line);}
-.btn-ghost:hover{background:var(--parchment-2);}
-.btn-ghost-light{background:transparent;color:var(--parchment);border-color:var(--line-dark);}
-.btn-ghost-light:hover{background:rgba(255,255,255,0.06);}
-.btn-danger{background:var(--rust-ink);color:var(--rust);}
-.btn-danger:hover{background:#f4dccf;}
-.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:8px;}
-.btn-block{width:100%;}
-.btn[disabled]{opacity:.5;cursor:not-allowed;}
-.icon-btn{background:transparent;border:1px solid var(--line);border-radius:8px;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-70);}
-.icon-btn:hover{background:var(--parchment-2);}
-
-/* ---------- top nav (marketing) ---------- */
-.nav{position:sticky;top:0;z-index:40;background:rgba(246,244,238,0.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;height:72px;}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:19px;font-weight:600;}
-.brand-mark{width:32px;height:32px;border-radius:8px;background:var(--ink);color:var(--brass);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:14px;font-weight:700;}
-.nav-links{display:flex;gap:30px;font-size:14px;font-weight:500;color:var(--ink-70);}
-.nav-links a:hover{color:var(--ink);}
-.demo-badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;background:var(--teal-ink);color:var(--teal);padding:5px 10px;border-radius:100px;border:1px solid rgba(47,111,98,0.25);}
-
-/* ---------- hero / ledger card (signature element) ---------- */
-.hero{padding:96px 0 70px;position:relative;overflow:hidden;}
-.hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:60px;align-items:center;}
-.hero h1{font-size:clamp(40px,5vw,60px);line-height:1.04;letter-spacing:-0.02em;}
-.hero .accent{color:var(--rust);font-style:italic;}
-.hero p.lead{margin-top:22px;font-size:17px;color:var(--ink-70);max-width:480px;}
-.hero-cta{margin-top:32px;}
-.hero-note{margin-top:16px;font-size:12.5px;color:var(--ink-50);font-family:var(--font-mono);}
-
-.access-card{margin-top:24px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 20px;max-width:520px;box-shadow:var(--shadow-soft);}
-.access-card h3{font-size:16px;margin-bottom:8px;}
-.access-card p{font-size:13px;color:var(--ink-70);}
-.access-list{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
-.access-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--parchment-2);font-family:var(--font-mono);font-size:11.5px;color:var(--ink-70);}
-.access-pill strong{color:var(--ink);font-family:var(--font-body);}
-
-.ledger-card{background:var(--navy);border-radius:22px;padding:26px 26px 22px;color:var(--parchment);box-shadow:var(--shadow-deep);transform:rotate(1.4deg);position:relative;}
-.ledger-card::before{content:"";position:absolute;inset:10px;border:1px solid var(--line-dark);border-radius:16px;pointer-events:none;}
-.ledger-head{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:1px dashed var(--line-dark);}
-.ledger-head .who{font-family:var(--font-display);font-size:19px;}
-.ledger-head .meta{font-family:var(--font-mono);font-size:11px;color:var(--paper-50);margin-top:4px;}
-.seal{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%, #E4C458, var(--brass) 60%, var(--brass-ink) 130%);display:flex;align-items:center;justify-content:center;color:var(--ink);font-family:var(--font-mono);font-size:9px;font-weight:700;text-align:center;line-height:1.1;border:2px solid rgba(0,0,0,0.15);animation:sealIn .7s cubic-bezier(.2,1.4,.4,1) both;transform:rotate(-8deg);}
-@keyframes sealIn{from{transform:rotate(20deg) scale(0.4);opacity:0;}to{transform:rotate(-8deg) scale(1);opacity:1;}}
-.ledger-rows{padding-top:16px;display:flex;flex-direction:column;gap:13px;}
-.ledger-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;}
-.ledger-row .label{color:var(--paper-70);}
-.stars{font-family:var(--font-mono);letter-spacing:2px;color:var(--brass);}
-.ledger-foot{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line-dark);display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--paper-50);}
-.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;margin-right:6px;box-shadow:0 0 0 0 rgba(47,111,98,.6);animation:pulse 2s infinite;}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,111,98,.5);}70%{box-shadow:0 0 0 8px rgba(47,111,98,0);}100%{box-shadow:0 0 0 0 rgba(47,111,98,0);}}
-
-/* ---------- sections ---------- */
-.section{padding:70px 0;}
-.section-head{max-width:560px;margin-bottom:40px;}
-.section-head h2{font-size:clamp(26px,3vw,34px);margin-top:10px;}
-.section-head p{margin-top:12px;color:var(--ink-70);font-size:15px;}
-
-.feature-grid{grid-template-columns:repeat(3,1fr);}
-.feature-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px;transition:transform .18s ease, box-shadow .18s ease;}
-.feature-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-soft);}
-.feature-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:17px;}
-.feature-card h3{font-size:16.5px;margin-bottom:8px;}
-.feature-card p{font-size:13.5px;color:var(--ink-70);}
-
-.steps{grid-template-columns:repeat(3,1fr);counter-reset:step;}
-.step{position:relative;padding-top:14px;border-top:2px solid var(--ink);}
-.step .num{font-family:var(--font-mono);font-size:12px;color:var(--rust);}
-.step h3{font-size:16px;margin:10px 0 8px;}
-.step p{font-size:13.5px;color:var(--ink-70);}
-
-.role-band{background:var(--ink);color:var(--parchment);border-radius:var(--radius-lg);padding:44px;}
-.role-grid{grid-template-columns:repeat(3,1fr);margin-top:26px;}
-.role-card{background:rgba(255,255,255,0.04);border:1px solid var(--line-dark);border-radius:14px;padding:20px;}
-.role-card .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--brass);letter-spacing:.08em;text-transform:uppercase;}
-.role-card h3{margin-top:8px;font-size:17px;}
-.role-card ul{margin:14px 0 0;padding-left:16px;font-size:13px;color:var(--paper-70);line-height:1.9;}
-
-.footer{border-top:1px solid var(--line);padding:36px 0;font-size:13px;color:var(--ink-50);}
-.footer .row{justify-content:space-between;}
-
-/* ---------- auth ---------- */
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--ink);padding:30px;}
-.auth-card{width:100%;max-width:420px;background:var(--parchment);border-radius:20px;padding:36px 34px;box-shadow:var(--shadow-deep);position:relative;}
-.auth-back{position:absolute;top:18px;left:20px;font-size:12.5px;color:var(--ink-50);font-family:var(--font-mono);}
-.auth-card h2{font-size:24px;margin-top:14px;}
-.auth-card .sub{color:var(--ink-70);font-size:13.5px;margin-top:6px;}
-.tab-row{display:flex;gap:6px;margin:22px 0 20px;background:var(--parchment-2);padding:4px;border-radius:10px;}
-.tab-btn{flex:1;text-align:center;padding:8px 6px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--ink-70);background:transparent;border:none;}
-.tab-btn.active{background:#fff;color:var(--ink);box-shadow:var(--shadow-soft);}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-70);margin-bottom:6px;}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:14px;color:var(--ink);}
-.field input:focus,.field select:focus,.field textarea:focus,button:focus-visible,.tab-btn:focus-visible{outline:2px solid var(--brass);outline-offset:1px;}
-.field-hint{font-size:11px;color:var(--ink-50);margin-top:5px;}
-.field-row{display:flex;gap:10px;}
-.field-row .field{flex:1;}
-.form-err{background:var(--rust-ink);color:var(--rust);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
-.auth-switch{margin-top:18px;text-align:center;font-size:13px;color:var(--ink-70);}
-.auth-switch a{color:var(--rust);font-weight:600;}
-.credential-box{margin-top:16px;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-70);background:var(--parchment-2);}
-
-/* ---------- app shell (dashboards) ---------- */
-.app-shell{display:flex;min-height:100vh;background:var(--parchment);}
-.sidebar{width:230px;flex-shrink:0;background:var(--ink);color:var(--parchment);display:flex;flex-direction:column;padding:22px 16px;}
-.sidebar-brand{display:flex;align-items:center;gap:9px;padding:0 6px 20px;font-family:var(--font-display);font-size:17px;border-bottom:1px solid var(--line-dark);margin-bottom:16px;}
-.side-inst{padding:0 6px 16px;}
-.side-inst .name{font-size:12.5px;font-weight:600;}
-.side-inst .code{font-family:var(--font-mono);font-size:10.5px;color:var(--paper-50);margin-top:2px;}
-.side-nav{display:flex;flex-direction:column;gap:2px;flex:1;}
-.side-link{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;font-size:13.5px;color:var(--paper-70);border:none;background:transparent;text-align:left;width:100%;}
-.side-link:hover{background:rgba(255,255,255,0.06);color:var(--parchment);}
-.side-link.active{background:var(--brass);color:var(--brass-ink);font-weight:600;}
-.side-ic{width:16px;text-align:center;font-size:14px;}
-.side-foot{border-top:1px solid var(--line-dark);padding-top:14px;margin-top:10px;}
-.side-user{display:flex;align-items:center;gap:9px;padding:0 6px;}
-.avatar{width:30px;height:30px;border-radius:50%;background:var(--brass);color:var(--brass-ink);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:var(--font-mono);flex-shrink:0;}
-.side-user .u-name{font-size:12.5px;font-weight:600;}
-.side-user .u-role{font-size:10.5px;color:var(--paper-50);text-transform:capitalize;}
-.logout-link{margin-top:10px;font-size:12px;color:var(--paper-50);}
-.logout-link:hover{color:var(--rust);}
-
-.main{flex:1;min-width:0;padding:28px 34px 60px;}
-.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:26px;flex-wrap:wrap;gap:14px;}
-.topbar h1{font-size:24px;}
-.topbar .sub{color:var(--ink-70);font-size:13.5px;margin-top:4px;}
-
-.stat-grid{grid-template-columns:repeat(4,1fr);margin-bottom:26px;}
-.stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
-.stat-card .eyebrow{display:block;margin-bottom:8px;}
-.stat-card .val{font-family:var(--font-display);font-size:28px;}
-.stat-card .delta{font-size:11.5px;color:var(--teal);margin-top:4px;font-family:var(--font-mono);}
-.stat-card .delta.down{color:var(--rust);}
-
-.panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px;margin-bottom:22px;}
-.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
-.panel-head h3{font-size:16px;}
-.panel-head .sub{font-size:12px;color:var(--ink-50);margin-top:2px;}
-
-.chart-wrap{position:relative;height:260px;}
-.two-col{grid-template-columns:1.3fr 1fr;}
-.three-col{grid-template-columns:repeat(3,1fr);}
-
-table{width:100%;border-collapse:collapse;font-size:13.5px;}
-th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-50);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);}
-td{padding:11px 10px;border-bottom:1px solid var(--parchment-2);vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-.table-scroll{overflow-x:auto;}
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:100px;font-family:var(--font-mono);}
-.badge-teal{background:var(--teal-ink);color:var(--teal);}
-.badge-rust{background:var(--rust-ink);color:var(--rust);}
-.badge-brass{background:#FBF3D9;color:var(--brass-ink);}
-.badge-grey{background:var(--parchment-2);color:var(--ink-70);}
-.row-actions{display:flex;gap:6px;}
-
-.empty{text-align:center;padding:50px 20px;color:var(--ink-50);}
-.empty .glyph{font-size:26px;margin-bottom:10px;}
-.empty h4{font-size:15px;color:var(--ink);margin-bottom:6px;}
-.empty p{font-size:13px;}
-
-/* card grid for pending feedback */
-.pf-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
-.pf-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px;}
-.pf-card .form-title{font-family:var(--font-display);font-size:16.5px;}
-.pf-card .teacher{font-size:13px;color:var(--ink-70);}
-.pf-card .meta-row{display:flex;gap:8px;flex-wrap:wrap;}
-
-/* history card */
-.hist-item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--parchment-2);}
-.hist-item:last-child{border-bottom:none;}
-.mini-seal{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#E4C458,var(--brass) 60%,var(--brass-ink) 130%);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink);}
-.hist-item .h-title{font-size:13.5px;font-weight:600;}
-.hist-item .h-meta{font-size:11.5px;color:var(--ink-50);font-family:var(--font-mono);margin-top:2px;}
-
-/* question builder */
-.q-item{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--parchment);}
-.q-item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.q-order{font-family:var(--font-mono);font-size:11px;color:var(--ink-50);}
-.q-type-pill{font-family:var(--font-mono);font-size:10.5px;background:var(--parchment-2);padding:3px 8px;border-radius:100px;}
-.opt-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
-.opt-row input{flex:1;}
-
-/* rating widget */
-.star-picker{display:flex;gap:6px;}
-.star-picker button{background:none;border:none;font-size:26px;color:var(--line);padding:0;line-height:1;}
-.star-picker button.on{color:var(--brass);}
-.emoji-picker{display:flex;gap:10px;}
-.emoji-picker button{background:none;border:2px solid transparent;border-radius:50%;font-size:26px;padding:4px;line-height:1;}
-.emoji-picker button.on{border-color:var(--brass);background:#FBF3D9;}
-.choice-list{display:flex;flex-direction:column;gap:8px;}
-.choice-opt{display:flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font-size:13.5px;}
-.choice-opt input{accent-color:var(--brass);}
-.dz{border:1.5px dashed var(--line);border-radius:10px;padding:18px;text-align:center;font-size:12.5px;color:var(--ink-50);}
-
-/* toast */
-.toast-wrap{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:10px;z-index:200;}
-.toast{background:var(--ink);color:var(--parchment);padding:12px 16px;border-radius:10px;font-size:13px;box-shadow:var(--shadow-deep);display:flex;align-items:center;gap:9px;min-width:220px;animation:toastIn .25s ease;}
-.toast.err{background:var(--rust);}
-.toast.ok{background:var(--teal);}
-@keyframes toastIn{from{transform:translateY(8px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-
-/* modal */
-.modal-bg{position:fixed;inset:0;background:rgba(14,22,38,0.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:20px;}
-.modal{background:#fff;border-radius:18px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:26px;box-shadow:var(--shadow-deep);}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.modal-head h3{font-size:17px;}
-
-.progress-track{height:6px;background:var(--parchment-2);border-radius:100px;overflow:hidden;margin-top:14px;}
-.progress-fill{height:100%;background:var(--brass);border-radius:100px;transition:width .3s ease;}
-
-@media (max-width:920px){
-  .hero-grid{grid-template-columns:1fr;} .feature-grid,.role-grid,.steps,.stat-grid,.two-col,.three-col{grid-template-columns:repeat(2,1fr);}
-  .app-shell{flex-direction:column;}
-  .sidebar{width:100%;flex-direction:row;flex-wrap:wrap;padding:14px;}
-  .side-nav{flex-direction:row;flex-wrap:wrap;}
-  .side-foot{display:none;}
-  .main{padding:22px 18px 50px;}
-}
-@media (max-width:620px){
-  .feature-grid,.role-grid,.steps,.stat-grid,.two-col,.three-col{grid-template-columns:1fr;}
-  .nav-links{display:none;}
-}
-</style>
-</head>
-<body>
-<div id="app"></div>
-<div class="toast-wrap" id="toastWrap"></div>
-
-<script>
-/* ================================================================
-  FEEDBACK SYSTEM — single-file prototype
+﻿/* ================================================================
+  FEEDBACK SYSTEM â€” single-file prototype
    ----------------------------------------------------------------
    This file runs entirely client-side with a localStorage-backed
-   data layer so it is fully functional the moment you open it —
+   data layer so it is fully functional the moment you open it â€”
    no server, no build step. It mirrors the schema described in the
    companion schema.sql (institutions / users / teachers / forms /
    questions / responses, every row scoped by institution_id).
@@ -311,7 +11,7 @@ tr:last-child td{border-bottom:none;}
    1. Run schema.sql in your Supabase project's SQL editor.
    2. Fill in SUPABASE_URL / SUPABASE_ANON_KEY below.
    3. Swap the functions inside the `DB` object for calls to
-      `supabase.from(...)` / `supabase.auth...` — every DB function
+      `supabase.from(...)` / `supabase.auth...` â€” every DB function
       is isolated for exactly this purpose, and each has a comment
       showing the equivalent Supabase call.
    ================================================================ */
@@ -377,7 +77,7 @@ function seedData(){
       const answers = {};
       questions.forEach(qq=>{
         if(qq.type==='rating') answers[qq.id] = 3 + Math.floor(Math.random()*3);
-        else if(qq.type==='emoji') answers[qq.id] = ['😍','🙂','😐','🙁','😞'][Math.floor(Math.random()*3)];
+        else if(qq.type==='emoji') answers[qq.id] = ['ðŸ˜','ðŸ™‚','ðŸ˜','ðŸ™','ðŸ˜ž'][Math.floor(Math.random()*3)];
         else if(qq.type==='yesno') answers[qq.id] = Math.random()>0.3 ? 'Yes' : 'No';
         else if(qq.type==='textarea') answers[qq.id] = ['Explains concepts very clearly and patiently.','Could slow down a bit during derivations, but overall great.','Really engaging labs, learned a lot this semester.'][Math.floor(Math.random()*3)];
       });
@@ -628,7 +328,7 @@ function renderLanding(){
       <a href="#features">Features</a><a href="#how">How it works</a><a href="#roles">Roles</a>
     </div>
     <div class="row gap-12">
-      <span class="demo-badge">Demo mode · local data</span>
+      <span class="demo-badge">Demo mode Â· local data</span>
       <button class="btn btn-ghost btn-sm" data-nav="login">Log in</button>
     </div>
   </div></div>
@@ -636,13 +336,13 @@ function renderLanding(){
   <header class="hero"><div class="container hero-grid">
     <div>
       <span class="eyebrow">Multi-tenant institution feedback</span>
-      <h1 style="margin-top:12px;">Every rating, <span class="accent">recorded &amp; verified</span> — one register per institution.</h1>
+      <h1 style="margin-top:12px;">Every rating, <span class="accent">recorded &amp; verified</span> â€” one register per institution.</h1>
       <p class="lead">Feedback System gives every college its own private feedback register: students rate faculty course by course, admins build the forms, and nothing ever crosses institution lines.</p>
       <div class="row gap-12 hero-cta">
         <button class="btn btn-primary" data-nav="signup">Create a student account</button>
         <button class="btn btn-ghost" data-nav="login">Admin / Super Admin login</button>
       </div>
-      <p class="hero-note">Try the seeded demo — institution code <strong>KSRCT001</strong>, admin login <strong>ADMIN / Admin@123</strong>, student login <strong>22AIML101 / Temp@123</strong>.</p>
+      <p class="hero-note">Try the seeded demo â€” institution code <strong>KSRCT001</strong>, admin login <strong>ADMIN / Admin@123</strong>, student login <strong>22AIML101 / Temp@123</strong>.</p>
       <div class="access-card">
         <span class="eyebrow">Admin access</span>
         <h3>Open the institution admin panel</h3>
@@ -656,14 +356,14 @@ function renderLanding(){
     </div>
     <div class="ledger-card">
       <div class="ledger-head">
-        <div><div class="who">Dr. R. Kumar</div><div class="meta">MACHINE LEARNING · SEM 5 · CSE (AIML)</div></div>
+        <div><div class="who">Dr. R. Kumar</div><div class="meta">MACHINE LEARNING Â· SEM 5 Â· CSE (AIML)</div></div>
         <div class="seal">RECORDED</div>
       </div>
       <div class="ledger-rows">
-        <div class="ledger-row"><span class="label">Teaching Quality</span><span class="stars">★★★★★</span></div>
-        <div class="ledger-row"><span class="label">Subject Knowledge</span><span class="stars">★★★★☆</span></div>
-        <div class="ledger-row"><span class="label">Punctuality</span><span class="stars">★★★★★</span></div>
-        <div class="ledger-row"><span class="label">Overall feel</span><span class="stars">🙂</span></div>
+        <div class="ledger-row"><span class="label">Teaching Quality</span><span class="stars">â˜…â˜…â˜…â˜…â˜…</span></div>
+        <div class="ledger-row"><span class="label">Subject Knowledge</span><span class="stars">â˜…â˜…â˜…â˜…â˜†</span></div>
+        <div class="ledger-row"><span class="label">Punctuality</span><span class="stars">â˜…â˜…â˜…â˜…â˜…</span></div>
+        <div class="ledger-row"><span class="label">Overall feel</span><span class="stars">ðŸ™‚</span></div>
       </div>
       <div class="ledger-foot"><span><span class="pulse-dot"></span>Synced to institution register</span><span>#RESP-2291</span></div>
     </div>
@@ -673,12 +373,12 @@ function renderLanding(){
     <div class="section-head"><span class="eyebrow">Platform</span><h2>Built for how a college actually runs feedback</h2><p>One codebase, every institution isolated by row-level security, no cross-tenant leakage.</p></div>
     <div class="grid feature-grid">
       ${[
-        ['📋','Drag-order form builder','Ratings, emoji scales, MCQ, checkboxes, dropdowns, yes/no, dates and short answers — reorder and require any question.'],
-        ['🔐','Institution-scoped data','Every table carries an institution_id; RLS policies mean one college can never see another\'s students, staff or scores.'],
-        ['🪪','Auto-generated logins','Add a student by register number and Feedback System issues a login ID and temporary password instantly.'],
-        ['📊','Live analytics','Faculty comparison, department averages, monthly trend lines and rating distributions, generated as responses arrive.'],
-        ['🧠','AI-assisted reading','Open-text answers are scanned for sentiment and recurring themes so admins can skim hundreds of comments in seconds.'],
-        ['🖨️','Exportable reports','Pull a form\'s responses to CSV or a print-ready report in one click for department reviews.'],
+        ['ðŸ“‹','Drag-order form builder','Ratings, emoji scales, MCQ, checkboxes, dropdowns, yes/no, dates and short answers â€” reorder and require any question.'],
+        ['ðŸ”','Institution-scoped data','Every table carries an institution_id; RLS policies mean one college can never see another\'s students, staff or scores.'],
+        ['ðŸªª','Auto-generated logins','Add a student by register number and Feedback System issues a login ID and temporary password instantly.'],
+        ['ðŸ“Š','Live analytics','Faculty comparison, department averages, monthly trend lines and rating distributions, generated as responses arrive.'],
+        ['ðŸ§ ','AI-assisted reading','Open-text answers are scanned for sentiment and recurring themes so admins can skim hundreds of comments in seconds.'],
+        ['ðŸ–¨ï¸','Exportable reports','Pull a form\'s responses to CSV or a print-ready report in one click for department reviews.'],
       ].map(([ic,t,d])=>`<div class="feature-card"><div class="feature-icon" style="background:var(--parchment-2)">${ic}</div><h3>${t}</h3><p>${d}</p></div>`).join('')}
     </div>
   </div></section>
@@ -705,7 +405,7 @@ function renderLanding(){
   </div></section>
 
   <footer class="footer"><div class="container row between">
-    <div>© 2026 Feedback System — institution feedback register.</div>
+    <div>Â© 2026 Feedback System â€” institution feedback register.</div>
     <div class="row gap-16"><a href="#" data-nav="login">Log in</a><a href="#" data-nav="signup">Sign up</a></div>
   </div></footer>
   `;
@@ -732,10 +432,10 @@ function renderAuth(mode){
     <form id="loginForm">
       ${tab!=='super' ? `<div class="field"><label>Institution code</label><input name="instCode" placeholder="e.g. KSRCT001" value="KSRCT001" required></div>` : ''}
       <div class="field"><label>${tab==='student'?'Login ID or email':'Email or login ID'}</label><input name="loginId" placeholder="${tab==='student'?'22AIML101':tab==='admin'?'ADMIN':'super@edusphere.ai'}" required></div>
-      <div class="field"><label>Password</label><input type="password" name="password" placeholder="••••••••" required></div>
+      <div class="field"><label>Password</label><input type="password" name="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required></div>
       <button class="btn btn-primary btn-block" type="submit">Log in</button>
     </form>
-    <div class="credential-box">Demo credentials —<br>Student: 22AIML101 / Temp@123 (code KSRCT001)<br>Admin: ADMIN / Admin@123 (code KSRCT001)<br>Super Admin: super@edusphere.ai / Super@123</div>
+    <div class="credential-box">Demo credentials â€”<br>Student: 22AIML101 / Temp@123 (code KSRCT001)<br>Admin: ADMIN / Admin@123 (code KSRCT001)<br>Super Admin: super@edusphere.ai / Super@123</div>
     <div class="auth-switch">New student? <a href="#" data-nav="signup">Create an account</a></div>
     ` : `
     <div class="form-err" id="authErr"></div>
@@ -806,7 +506,7 @@ function handleSignup(form){
     section: form.section.value.trim(), registerNumber: regNo, loginId: regNo, phone:'',
   });
   setSession({userId:user.id, role:'student', institutionId:inst.id}); state.session=getSession();
-  navigate('student'); toast('Account created — welcome to ' + inst.name);
+  navigate('student'); toast('Account created â€” welcome to ' + inst.name);
 }
 
 /* ================================================================
@@ -817,13 +517,13 @@ function shellSidebar(role){
   const inst = DB.institution(s.institutionId);
   const user = DB.user(s.userId);
   const items = role==='admin' ? [
-    ['overview','◧','Overview'], ['teachers','🎓','Teachers'], ['departments','🏛','Departments'],
-    ['students','🧑‍🎓','Students'], ['forms','📋','Feedback Forms'], ['responses','📊','Responses & Analytics'],
-    ['reports','🖨','Reports'], ['settings','⚙','Settings'],
+    ['overview','â—§','Overview'], ['teachers','ðŸŽ“','Teachers'], ['departments','ðŸ›','Departments'],
+    ['students','ðŸ§‘â€ðŸŽ“','Students'], ['forms','ðŸ“‹','Feedback Forms'], ['responses','ðŸ“Š','Responses & Analytics'],
+    ['reports','ðŸ–¨','Reports'], ['settings','âš™','Settings'],
   ] : role==='teacher' ? [
-    ['assigned','📝','Assigned Forms'], ['profile','👤','Profile'],
+    ['assigned','ðŸ“','Assigned Forms'], ['profile','ðŸ‘¤','Profile'],
   ] : [
-    ['pending','🕓','Pending Feedback'], ['history','📜','Submission History'], ['profile','👤','Profile'],
+    ['pending','ðŸ•“','Pending Feedback'], ['history','ðŸ“œ','Submission History'], ['profile','ðŸ‘¤','Profile'],
   ];
   const activeTab = role==='admin' ? state.adminTab : role==='teacher' ? state.teacherTab : state.studentTab;
   return `
@@ -835,7 +535,7 @@ function shellSidebar(role){
     </nav>
     <div class="side-foot">
       <div class="side-user"><div class="avatar">${avatarInitials(user.fullName)}</div><div><div class="u-name">${escapeHtml(user.fullName)}</div><div class="u-role">${role.replace('_',' ')}</div></div></div>
-      <a href="#" class="logout-link" data-action="logout">Sign out →</a>
+      <a href="#" class="logout-link" data-action="logout">Sign out â†’</a>
     </div>
   </aside>`;
 }
@@ -854,13 +554,13 @@ function studentPendingList(){
     }
   }));
   if(!rows.length){
-    return `<div class="panel empty"><div class="glyph">✅</div><h4>You're all caught up</h4><p>No pending evaluations right now — new teachers or forms will appear here once your admin publishes them.</p></div>`;
+    return `<div class="panel empty"><div class="glyph">âœ…</div><h4>You're all caught up</h4><p>No pending evaluations right now â€” new teachers or forms will appear here once your admin publishes them.</p></div>`;
   }
   return `<div class="grid pf-grid">${rows.map(({form,teacher})=>`
     <div class="pf-card">
       <div><span class="badge badge-brass">${escapeHtml(teacher.subject)}</span></div>
       <div class="form-title">${escapeHtml(teacher.name)}</div>
-      <div class="teacher">${escapeHtml(teacher.designation)} · ${escapeHtml(teacher.department || 'Department')}</div>
+      <div class="teacher">${escapeHtml(teacher.designation)} Â· ${escapeHtml(teacher.department || 'Department')}</div>
       <div class="meta-row"><span class="badge badge-grey">${form.questions.length} questions</span><span class="badge badge-grey">${escapeHtml(form.title)}</span></div>
       <button class="btn btn-primary btn-block btn-sm" data-submit-form="${form.id}" data-submit-teacher="${teacher.id}">Give feedback</button>
     </div>`).join('')}</div>`;
@@ -869,10 +569,10 @@ function studentPendingList(){
 function studentHistory(){
   const s = state.session;
   const my = DB.responsesByStudent(s.userId).sort((a,b)=> new Date(b.submittedAt)-new Date(a.submittedAt));
-  if(!my.length) return `<div class="panel empty"><div class="glyph">📜</div><h4>No submissions yet</h4><p>Feedback you submit will show up here with a recorded timestamp.</p></div>`;
+  if(!my.length) return `<div class="panel empty"><div class="glyph">ðŸ“œ</div><h4>No submissions yet</h4><p>Feedback you submit will show up here with a recorded timestamp.</p></div>`;
   return `<div class="panel">${my.map(r=>{
     const f = DB.form(r.formId), t = DB.teacher(r.teacherId);
-    return `<div class="hist-item"><div class="mini-seal">✓</div><div style="flex:1;"><div class="h-title">${escapeHtml(t?t.name:'Unknown')} — ${escapeHtml(f?f.title:'Deleted form')}</div><div class="h-meta">RECORDED ${fmtDateTime(r.submittedAt)} · #${r.id.toUpperCase()}</div></div><span class="badge badge-teal">Verified</span></div>`;
+    return `<div class="hist-item"><div class="mini-seal">âœ“</div><div style="flex:1;"><div class="h-title">${escapeHtml(t?t.name:'Unknown')} â€” ${escapeHtml(f?f.title:'Deleted form')}</div><div class="h-meta">RECORDED ${fmtDateTime(r.submittedAt)} Â· #${r.id.toUpperCase()}</div></div><span class="badge badge-teal">Verified</span></div>`;
   }).join('')}</div>`;
 }
 
@@ -924,7 +624,7 @@ function teacherAssigned(){
   const teacher = DB.teacher(s.teacherId) || db.teachers.find(t => t.email.toLowerCase() === DB.user(s.userId)?.email.toLowerCase());
   const forms = teacher ? DB.formsByInstitution(s.institutionId).filter(f => f.teacherIds.includes(teacher.id)) : [];
   if(!teacher){
-    return `<div class="panel empty"><div class="glyph">👩‍🏫</div><h4>Teacher profile not found</h4><p>Your teacher login is stored, but the linked teacher record is missing.</p></div>`;
+    return `<div class="panel empty"><div class="glyph">ðŸ‘©â€ðŸ«</div><h4>Teacher profile not found</h4><p>Your teacher login is stored, but the linked teacher record is missing.</p></div>`;
   }
   return `<div class="app-shell">
     ${shellSidebar('teacher')}
@@ -937,7 +637,7 @@ function teacherAssigned(){
       </div>
       <div class="panel">
         <div class="panel-head"><div><h3>Assigned forms</h3><div class="sub">These are the forms this teacher account can review</div></div></div>
-        ${forms.length ? forms.map(f => `<div class="hist-item"><div class="mini-seal">✓</div><div style="flex:1;"><div class="h-title">${escapeHtml(f.title)}</div><div class="h-meta">${escapeHtml(f.description || '')} · ${escapeHtml(f.status)}</div></div><span class="badge badge-teal">${DB.responsesByForm(f.id).length} responses</span></div>`).join('') : '<div class="empty"><p>No assigned forms yet.</p></div>'}
+        ${forms.length ? forms.map(f => `<div class="hist-item"><div class="mini-seal">âœ“</div><div style="flex:1;"><div class="h-title">${escapeHtml(f.title)}</div><div class="h-meta">${escapeHtml(f.description || '')} Â· ${escapeHtml(f.status)}</div></div><span class="badge badge-teal">${DB.responsesByForm(f.id).length} responses</span></div>`).join('') : '<div class="empty"><p>No assigned forms yet.</p></div>'}
       </div>
     </main>
   </div>`;
@@ -949,8 +649,8 @@ function renderSubmissionModal(){
   const form = DB.form(formId), teacher = DB.teacher(teacherId);
   const qHtml = form.questions.map((q,i)=>{
     let input='';
-    if(q.type==='rating') input = `<div class="star-picker" data-qid="${q.id}" data-type="rating">${[1,2,3,4,5].map(n=>`<button type="button" data-val="${n}">★</button>`).join('')}</div>`;
-    else if(q.type==='emoji') input = `<div class="emoji-picker" data-qid="${q.id}" data-type="emoji">${['😍','🙂','😐','🙁','😞'].map(e=>`<button type="button" data-val="${e}">${e}</button>`).join('')}</div>`;
+    if(q.type==='rating') input = `<div class="star-picker" data-qid="${q.id}" data-type="rating">${[1,2,3,4,5].map(n=>`<button type="button" data-val="${n}">â˜…</button>`).join('')}</div>`;
+    else if(q.type==='emoji') input = `<div class="emoji-picker" data-qid="${q.id}" data-type="emoji">${['ðŸ˜','ðŸ™‚','ðŸ˜','ðŸ™','ðŸ˜ž'].map(e=>`<button type="button" data-val="${e}">${e}</button>`).join('')}</div>`;
     else if(q.type==='yesno') input = `<div class="choice-list" data-qid="${q.id}" data-type="radio">${['Yes','No'].map(o=>`<label class="choice-opt"><input type="radio" name="q_${q.id}" value="${o}">${o}</label>`).join('')}</div>`;
     else if(q.type==='radio' || q.type==='dropdown') input = `<div class="choice-list" data-qid="${q.id}" data-type="radio">${(q.options||['Option A','Option B']).map(o=>`<label class="choice-opt"><input type="radio" name="q_${q.id}" value="${escapeHtml(o)}">${escapeHtml(o)}</label>`).join('')}</div>`;
     else if(q.type==='checkbox') input = `<div class="choice-list" data-qid="${q.id}" data-type="checkbox">${(q.options||['Option A','Option B']).map(o=>`<label class="choice-opt"><input type="checkbox" name="q_${q.id}" value="${escapeHtml(o)}">${escapeHtml(o)}</label>`).join('')}</div>`;
@@ -961,7 +661,7 @@ function renderSubmissionModal(){
   }).join('');
   return `<div class="modal-bg" data-close-on-bg="submitModal">
     <div class="modal">
-      <div class="modal-head"><div><h3>${escapeHtml(teacher.name)}</h3><div class="sub" style="font-size:12px;color:var(--ink-50);">${escapeHtml(form.title)}</div></div><button class="icon-btn" data-action="close-modal">✕</button></div>
+      <div class="modal-head"><div><h3>${escapeHtml(teacher.name)}</h3><div class="sub" style="font-size:12px;color:var(--ink-50);">${escapeHtml(form.title)}</div></div><button class="icon-btn" data-action="close-modal">âœ•</button></div>
       <form id="submissionForm">${qHtml}<button class="btn btn-primary btn-block" type="submit">Submit feedback</button></form>
     </div>
   </div>`;
@@ -1001,8 +701,11 @@ function adminOverview(){
   const forms = DB.formsByInstitution(s.institutionId);
   const responses = DB.responsesByInstitution(s.institutionId);
   const published = forms.filter(f=>f.status==='published');
+  let potential = 0; published.forEach(f=>{ potential += f.teacherIds.length * students.length; });
+  const responseRate = potential ? Math.round((responses.length/potential)*100) : 0;
   const ratingAnswers = [];
   responses.forEach(r=>{ const f=DB.form(r.formId); if(!f) return; f.questions.forEach(q=>{ if(q.type==='rating' && r.answers[q.id]) ratingAnswers.push(Number(r.answers[q.id])); }); });
+  const avgRating = ratingAnswers.length ? (ratingAnswers.reduce((a,b)=>a+b,0)/ratingAnswers.length).toFixed(1) : 'â€”';
 
   // faculty comparison
   const facAvg = teachers.map(t=>{
@@ -1011,34 +714,48 @@ function adminOverview(){
     tResp.forEach(r=>{ const f=DB.form(r.formId); if(!f) return; f.questions.forEach(q=>{ if(q.type==='rating' && r.answers[q.id]) vals.push(Number(r.answers[q.id])); }); });
     return {name:t.name.split(' ').slice(-1)[0], avg: vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : 0};
   });
+  // monthly trend
+  const trendMap = {};
+  responses.forEach(r=>{ const k=monthKey(r.submittedAt); trendMap[k]=(trendMap[k]||0)+1; });
+  const trendLabels = Object.keys(trendMap);
   const recent = responses.slice().sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)).slice(0,5);
 
-  setTimeout(()=>drawCharts({facAvg}), 0);
+  setTimeout(()=>drawCharts({facAvg, trendLabels, trendVals:Object.values(trendMap)}), 0);
 
   return `
   <div class="grid stat-grid">
     <div class="stat-card"><span class="eyebrow">Total students</span><div class="val">${students.length}</div></div>
     <div class="stat-card"><span class="eyebrow">Total teachers</span><div class="val">${teachers.length}</div></div>
     <div class="stat-card"><span class="eyebrow">Feedback forms</span><div class="val">${forms.length}</div><div class="delta">${published.length} published</div></div>
+    <div class="stat-card"><span class="eyebrow">Response rate</span><div class="val">${responseRate}%</div><div class="delta ${responseRate<50?'down':''}">${responses.length} responses recorded</div></div>
   </div>
   <div class="grid two-col">
     <div class="panel"><div class="panel-head"><div><h3>Faculty comparison</h3><div class="sub">Average rating out of 5</div></div></div><div class="chart-wrap"><canvas id="chartFaculty"></canvas></div></div>
+    <div class="panel"><div class="panel-head"><div><h3>Monthly response trend</h3><div class="sub">Responses recorded per month</div></div></div><div class="chart-wrap"><canvas id="chartTrend"></canvas></div></div>
   </div>
   <div class="grid two-col">
     <div class="panel">
       <div class="panel-head"><div><h3>Recent activity</h3><div class="sub">Latest feedback recorded</div></div></div>
-      ${recent.length ? recent.map(r=>{ const f=DB.form(r.formId), t=DB.teacher(r.teacherId), st=DB.user(r.studentId); return `<div class="hist-item"><div class="mini-seal">✓</div><div style="flex:1;"><div class="h-title">${escapeHtml(st?st.fullName:'—')} rated ${escapeHtml(t?t.name:'—')}</div><div class="h-meta">${escapeHtml(f?f.title:'')} · ${fmtDateTime(r.submittedAt)}</div></div></div>`;}).join('') : `<div class="empty"><p>No responses yet.</p></div>`}
+      ${recent.length ? recent.map(r=>{ const f=DB.form(r.formId), t=DB.teacher(r.teacherId), st=DB.user(r.studentId); return `<div class="hist-item"><div class="mini-seal">âœ“</div><div style="flex:1;"><div class="h-title">${escapeHtml(st?st.fullName:'â€”')} rated ${escapeHtml(t?t.name:'â€”')}</div><div class="h-meta">${escapeHtml(f?f.title:'')} Â· ${fmtDateTime(r.submittedAt)}</div></div></div>`;}).join('') : `<div class="empty"><p>No responses yet.</p></div>`}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div><h3>Average rating</h3><div class="sub">Across all faculty &amp; forms</div></div></div>
+      <div style="text-align:center;padding:20px 0;"><div style="font-family:var(--font-display);font-size:52px;">${avgRating}</div><div class="sub" style="color:var(--ink-50);font-size:12.5px;">out of 5.0 Â· ${ratingAnswers.length} rating answers</div></div>
     </div>
   </div>`;
 }
 
 let chartRefs = {};
 function destroyCharts(){ Object.values(chartRefs).forEach(c=>c && c.destroy()); chartRefs = {}; }
-function drawCharts({facAvg}){
+function drawCharts({facAvg, trendLabels, trendVals}){
   destroyCharts();
   const facCanvas = document.getElementById('chartFaculty');
   if(facCanvas){
     chartRefs.faculty = new Chart(facCanvas, {type:'bar', data:{labels:facAvg.map(f=>f.name), datasets:[{label:'Avg rating', data:facAvg.map(f=>f.avg), backgroundColor:'#C9A227', borderRadius:6}]}, options:{scales:{y:{beginAtZero:true,max:5,grid:{color:'#EDE9DC'}}, x:{grid:{display:false}}}, plugins:{legend:{display:false}}}});
+  }
+  const trendCanvas = document.getElementById('chartTrend');
+  if(trendCanvas){
+    chartRefs.trend = new Chart(trendCanvas, {type:'line', data:{labels:trendLabels, datasets:[{label:'Responses', data:trendVals, borderColor:'#2F6F62', backgroundColor:'rgba(47,111,98,0.12)', fill:true, tension:.35}]}, options:{scales:{y:{beginAtZero:true,grid:{color:'#EDE9DC'}}, x:{grid:{display:false}}}, plugins:{legend:{display:false}}}});
   }
 }
 
@@ -1046,15 +763,15 @@ function adminTeachers(){
   const s = state.session;
   const teachers = DB.teachersByInstitution(s.institutionId);
   return `<div class="panel">
-    <div class="panel-head"><div><h3>Teachers</h3><div class="sub">${teachers.length} on record · adding a teacher creates a student feedback card for that department</div></div><button class="btn btn-brass btn-sm" data-action="open-teacher-modal">+ Add teacher</button></div>
+    <div class="panel-head"><div><h3>Teachers</h3><div class="sub">${teachers.length} on record Â· adding a teacher creates a student feedback card for that department</div></div><button class="btn btn-brass btn-sm" data-action="open-teacher-modal">+ Add teacher</button></div>
     <div class="table-scroll"><table><thead><tr><th>Name</th><th>Employee ID</th><th>Department</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody>
     ${teachers.length ? teachers.map(t=>`<tr>
       <td><strong>${escapeHtml(t.name)}</strong><br><span style="font-size:11.5px;color:var(--ink-50);">${escapeHtml(t.designation)}</span></td>
       <td class="mono">${escapeHtml(t.employeeId)}</td><td>${escapeHtml(t.department)}</td><td>${escapeHtml(t.subject)}</td>
       <td><span class="badge ${t.status==='active'?'badge-teal':'badge-grey'}">${t.status}</span></td>
       <td><div class="row-actions">
-        <button class="icon-btn" title="Toggle active" data-toggle-teacher="${t.id}">⏻</button>
-        <button class="icon-btn" title="Delete" data-delete-teacher="${t.id}">🗑</button>
+        <button class="icon-btn" title="Toggle active" data-toggle-teacher="${t.id}">â»</button>
+        <button class="icon-btn" title="Delete" data-delete-teacher="${t.id}">ðŸ—‘</button>
       </div></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty"><p>No teachers added yet.</p></div></td></tr>`}
     </tbody></table></div>
   </div>`;
@@ -1066,7 +783,7 @@ function adminDepartments(){
   return `<div class="panel">
     <div class="panel-head"><div><h3>Departments</h3><div class="sub">${depts.length} configured</div></div><button class="btn btn-brass btn-sm" data-action="open-dept-modal">+ Add department</button></div>
     <div class="table-scroll"><table><thead><tr><th>Department</th><th>HOD</th><th></th></tr></thead><tbody>
-    ${depts.length ? depts.map(d=>`<tr><td><strong>${escapeHtml(d.name)}</strong></td><td>${escapeHtml(d.hod||'—')}</td><td><button class="icon-btn" data-delete-dept="${d.id}">🗑</button></td></tr>`).join('') : `<tr><td colspan="3"><div class="empty"><p>No departments yet.</p></div></td></tr>`}
+    ${depts.length ? depts.map(d=>`<tr><td><strong>${escapeHtml(d.name)}</strong></td><td>${escapeHtml(d.hod||'â€”')}</td><td><button class="icon-btn" data-delete-dept="${d.id}">ðŸ—‘</button></td></tr>`).join('') : `<tr><td colspan="3"><div class="empty"><p>No departments yet.</p></div></td></tr>`}
     </tbody></table></div>
   </div>`;
 }
@@ -1075,16 +792,16 @@ function adminStudents(){
   const s = state.session;
   const students = DB.usersByInstitution(s.institutionId,'student');
   return `<div class="panel">
-    <div class="panel-head"><div><h3>Students</h3><div class="sub">${students.length} enrolled · logins auto-generated from register number</div></div><button class="btn btn-brass btn-sm" data-action="open-student-modal">+ Add student</button></div>
+    <div class="panel-head"><div><h3>Students</h3><div class="sub">${students.length} enrolled Â· logins auto-generated from register number</div></div><button class="btn btn-brass btn-sm" data-action="open-student-modal">+ Add student</button></div>
     <div class="table-scroll"><table><thead><tr><th>Name</th><th>Register No.</th><th>Login ID</th><th>Dept / Year</th><th>Status</th><th></th></tr></thead><tbody>
     ${students.length ? students.map(u=>`<tr>
-      <td>${escapeHtml(u.fullName)}</td><td class="mono">${escapeHtml(u.registerNumber||'—')}</td><td class="mono">${escapeHtml(u.loginId)}</td>
-      <td>${escapeHtml(u.department||'—')} · Y${escapeHtml(u.year||'—')}</td>
+      <td>${escapeHtml(u.fullName)}</td><td class="mono">${escapeHtml(u.registerNumber||'â€”')}</td><td class="mono">${escapeHtml(u.loginId)}</td>
+      <td>${escapeHtml(u.department||'â€”')} Â· Y${escapeHtml(u.year||'â€”')}</td>
       <td><span class="badge ${u.status==='active'?'badge-teal':'badge-grey'}">${u.status}</span></td>
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" data-reset-password="${u.id}">Reset password</button>
-        <button class="icon-btn" data-delete-student="${u.id}">🗑</button>
-      </div></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty"><p>No students yet — add one or share your institution code so students can self-register.</p></div></td></tr>`}
+        <button class="icon-btn" data-delete-student="${u.id}">ðŸ—‘</button>
+      </div></td></tr>`).join('') : `<tr><td colspan="6"><div class="empty"><p>No students yet â€” add one or share your institution code so students can self-register.</p></div></td></tr>`}
     </tbody></table></div>
   </div>`;
 }
@@ -1098,15 +815,15 @@ function adminForms(){
     ${forms.length ? forms.map(f=>{
       const respCount = DB.responsesByForm(f.id).length;
       return `<tr>
-      <td><strong>${escapeHtml(f.title)}</strong></td><td>Sem ${escapeHtml(f.semester||'—')}</td>
-      <td>${f.teacherIds.map(id=>{const t=DB.teacher(id); return t?escapeHtml(t.name.split(' ').slice(-1)[0]):'';}).filter(Boolean).join(', ')||'—'}</td>
+      <td><strong>${escapeHtml(f.title)}</strong></td><td>Sem ${escapeHtml(f.semester||'â€”')}</td>
+      <td>${f.teacherIds.map(id=>{const t=DB.teacher(id); return t?escapeHtml(t.name.split(' ').slice(-1)[0]):'';}).filter(Boolean).join(', ')||'â€”'}</td>
       <td>${f.questions.length}</td>
       <td><span class="badge ${f.status==='published'?'badge-teal':'badge-grey'}">${f.status}</span></td>
       <td>${respCount}</td>
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" data-edit-form="${f.id}">Edit</button>
         <button class="btn btn-ghost btn-sm" data-toggle-form="${f.id}">${f.status==='published'?'Unpublish':'Publish'}</button>
-        <button class="icon-btn" data-delete-form="${f.id}">🗑</button>
+        <button class="icon-btn" data-delete-form="${f.id}">ðŸ—‘</button>
       </div></td></tr>`;}).join('') : `<tr><td colspan="7"><div class="empty"><p>No feedback forms yet. Create your first one.</p></div></td></tr>`}
     </tbody></table></div>
   </div>`;
@@ -1118,15 +835,15 @@ function questionEditorRow(q, idx, total){
     <div class="q-item-head">
       <div class="row gap-8"><span class="q-order">Q${idx+1}</span><span class="q-type-pill">${q.type}</span></div>
       <div class="row gap-8">
-        <button type="button" class="icon-btn" data-move-q="${q.id}" data-dir="up" ${idx===0?'disabled':''}>↑</button>
-        <button type="button" class="icon-btn" data-move-q="${q.id}" data-dir="down" ${idx===total-1?'disabled':''}>↓</button>
-        <button type="button" class="icon-btn" data-remove-q="${q.id}">✕</button>
+        <button type="button" class="icon-btn" data-move-q="${q.id}" data-dir="up" ${idx===0?'disabled':''}>â†‘</button>
+        <button type="button" class="icon-btn" data-move-q="${q.id}" data-dir="down" ${idx===total-1?'disabled':''}>â†“</button>
+        <button type="button" class="icon-btn" data-remove-q="${q.id}">âœ•</button>
       </div>
     </div>
     <div class="field-row">
       <div class="field" style="flex:2;"><label>Question text</label><input data-qfield="text" data-qid="${q.id}" value="${escapeHtml(q.text)}" placeholder="e.g. Teaching Quality"></div>
       <div class="field"><label>Type</label><select data-qfield="type" data-qid="${q.id}">
-        ${['rating','emoji','text','textarea','radio','checkbox','dropdown','yesno','date'].map(t=>`<option value="${t}" ${q.type===t?'selected':''}>${({rating:'★ Rating',emoji:'Emoji rating',text:'Short text',textarea:'Long text',radio:'Multiple choice',checkbox:'Checkbox',dropdown:'Dropdown',yesno:'Yes / No',date:'Date'})[t]}</option>`).join('')}
+        ${['rating','emoji','text','textarea','radio','checkbox','dropdown','yesno','date'].map(t=>`<option value="${t}" ${q.type===t?'selected':''}>${({rating:'â˜… Rating',emoji:'Emoji rating',text:'Short text',textarea:'Long text',radio:'Multiple choice',checkbox:'Checkbox',dropdown:'Dropdown',yesno:'Yes / No',date:'Date'})[t]}</option>`).join('')}
       </select></div>
     </div>
     ${needsOptions ? `<div class="field"><label>Options (comma separated)</label><input data-qfield="options" data-qid="${q.id}" value="${escapeHtml((q.options||[]).join(', '))}" placeholder="Option A, Option B, Option C"></div>` : ''}
@@ -1142,7 +859,7 @@ function adminFormBuilder(){
   const teachers = DB.teachersByInstitution(s.institutionId);
   return `<div class="panel">
     <div class="panel-head"><div><h3>${isNew?'New feedback form':'Edit form'}</h3><div class="sub">Assemble faculty &amp; questions, then publish when ready</div></div>
-      <button class="btn btn-ghost btn-sm" data-action="cancel-form-builder">← Back to forms</button>
+      <button class="btn btn-ghost btn-sm" data-action="cancel-form-builder">â† Back to forms</button>
     </div>
     <form id="formBuilderForm">
       <div class="field-row">
@@ -1151,14 +868,14 @@ function adminFormBuilder(){
       </div>
       <div class="field"><label>Description</label><textarea name="description" rows="2" placeholder="Optional context for students">${escapeHtml(form.description||'')}</textarea></div>
       <div class="field-row">
-        <div class="field"><label>Department</label><select name="departmentId"><option value="">— Select —</option>${depts.map(d=>`<option value="${d.id}" ${form.departmentId===d.id?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>Department</label><select name="departmentId"><option value="">â€” Select â€”</option>${depts.map(d=>`<option value="${d.id}" ${form.departmentId===d.id?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}</select></div>
         <div class="field"><label>Faculty being evaluated</label>
-          <div class="choice-list" id="teacherPicker">${teachers.map(t=>`<label class="choice-opt"><input type="checkbox" value="${t.id}" ${form.teacherIds.includes(t.id)?'checked':''}> ${escapeHtml(t.name)} <span style="color:var(--ink-50);font-size:11.5px;">— ${escapeHtml(t.subject)}</span></label>`).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">Add teachers first.</p>'}</div>
+          <div class="choice-list" id="teacherPicker">${teachers.map(t=>`<label class="choice-opt"><input type="checkbox" value="${t.id}" ${form.teacherIds.includes(t.id)?'checked':''}> ${escapeHtml(t.name)} <span style="color:var(--ink-50);font-size:11.5px;">â€” ${escapeHtml(t.subject)}</span></label>`).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">Add teachers first.</p>'}</div>
         </div>
       </div>
 
       <div class="panel-head" style="margin-top:18px;"><div><h3 style="font-size:14px;">Questions</h3></div><button type="button" class="btn btn-ghost btn-sm" data-action="add-question">+ Add question</button></div>
-      <div id="questionList">${form.questions.map((q,i)=>questionEditorRow(q,i,form.questions.length)).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">No questions yet — add your first one.</p>'}</div>
+      <div id="questionList">${form.questions.map((q,i)=>questionEditorRow(q,i,form.questions.length)).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">No questions yet â€” add your first one.</p>'}</div>
 
       <div class="row gap-12" style="margin-top:20px;">
         <button class="btn btn-ghost" type="submit" data-save-status="draft">Save as draft</button>
@@ -1175,7 +892,7 @@ function adminResponses(){
   const forms = DB.formsByInstitution(s.institutionId);
   if(!state.activeAnalyticsForm && forms.length) state.activeAnalyticsForm = forms[0].id;
   const form = DB.form(state.activeAnalyticsForm);
-  if(!forms.length) return `<div class="panel empty"><div class="glyph">📊</div><h4>No forms yet</h4><p>Create a feedback form to start collecting responses.</p></div>`;
+  if(!forms.length) return `<div class="panel empty"><div class="glyph">ðŸ“Š</div><h4>No forms yet</h4><p>Create a feedback form to start collecting responses.</p></div>`;
 
   const responses = DB.responsesByForm(form.id);
   const ratingQs = form.questions.filter(q=>q.type==='rating');
@@ -1237,8 +954,8 @@ function adminResponses(){
         <div><div class="eyebrow">Negative</div><div style="font-family:var(--font-mono);font-size:18px;color:var(--rust);">${Math.round(neg/totalSent*100)}%</div></div>
       </div>
       <div class="progress-track"><div class="progress-fill" style="width:${Math.round(pos/totalSent*100)}%;"></div></div>
-      <p style="font-size:12.5px;color:var(--ink-70);margin-top:14px;">Most mentioned: ${topWords.length ? topWords.map(([w])=>`<span class="badge badge-grey" style="margin:2px;">${escapeHtml(w)}</span>`).join('') : '—'}</p>
-      <p style="font-size:12.5px;color:var(--ink-50);margin-top:10px;">Summary: comments skew ${pos>=neg?'positive':'critical'} (${pos} positive vs ${neg} negative out of ${totalSent} written responses). Heuristic keyword scan — not a live model call.</p>
+      <p style="font-size:12.5px;color:var(--ink-70);margin-top:14px;">Most mentioned: ${topWords.length ? topWords.map(([w])=>`<span class="badge badge-grey" style="margin:2px;">${escapeHtml(w)}</span>`).join('') : 'â€”'}</p>
+      <p style="font-size:12.5px;color:var(--ink-50);margin-top:10px;">Summary: comments skew ${pos>=neg?'positive':'critical'} (${pos} positive vs ${neg} negative out of ${totalSent} written responses). Heuristic keyword scan â€” not a live model call.</p>
       `}
     </div>
   </div>
@@ -1249,8 +966,8 @@ function adminResponses(){
     ${responses.length ? responses.slice().sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt)).map(r=>{
       const stu=DB.user(r.studentId), t=DB.teacher(r.teacherId);
       const vals = ratingQs.map(q=>Number(r.answers[q.id])).filter(v=>!isNaN(v));
-      const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
-      return `<tr><td>${escapeHtml(stu?stu.fullName:'—')}</td><td>${escapeHtml(t?t.name:'—')}</td><td class="mono">${avg}</td><td>${fmtDateTime(r.submittedAt)}</td></tr>`;
+      const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : 'â€”';
+      return `<tr><td>${escapeHtml(stu?stu.fullName:'â€”')}</td><td>${escapeHtml(t?t.name:'â€”')}</td><td class="mono">${avg}</td><td>${fmtDateTime(r.submittedAt)}</td></tr>`;
     }).join('') : `<tr><td colspan="4"><div class="empty"><p>No responses recorded yet.</p></div></td></tr>`}
     </tbody></table></div>
   </div>`;
@@ -1261,7 +978,7 @@ function drawAnalyticsCharts({teacherStats, ratingQs, dist}){
   const facC = document.getElementById('chartRespFaculty');
   if(facC) chartRefs.rf = new Chart(facC, {type:'bar', data:{labels:teacherStats.map(t=>t.teacher.name.split(' ').slice(-1)[0]), datasets:[{data:teacherStats.map(t=>t.avg), backgroundColor:'#2F6F62', borderRadius:6}]}, options:{scales:{y:{beginAtZero:true,max:5,grid:{color:'#EDE9DC'}},x:{grid:{display:false}}}, plugins:{legend:{display:false}}}});
   const distC = document.getElementById('chartRespDist');
-  if(distC) chartRefs.rd = new Chart(distC, {type:'pie', data:{labels:['1★','2★','3★','4★','5★'], datasets:[{data:dist, backgroundColor:['#B65C3A','#D08862','#EDE9DC','#8FB6AC','#2F6F62']}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}});
+  if(distC) chartRefs.rd = new Chart(distC, {type:'pie', data:{labels:['1â˜…','2â˜…','3â˜…','4â˜…','5â˜…'], datasets:[{data:dist, backgroundColor:['#B65C3A','#D08862','#EDE9DC','#8FB6AC','#2F6F62']}]}, options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}});
   const radarC = document.getElementById('chartRadar');
   if(radarC) chartRefs.radar = new Chart(radarC, {type:'radar', data:{labels:ratingQs.map(q=>q.text), datasets:teacherStats.map((t,i)=>({label:t.teacher.name.split(' ').slice(-1)[0], data:t.perQ, borderColor:['#C9A227','#2F6F62','#B65C3A'][i%3], backgroundColor:['rgba(201,162,39,0.15)','rgba(47,111,98,0.15)','rgba(182,92,58,0.15)'][i%3]}))}, options:{scales:{r:{beginAtZero:true,max:5,pointLabels:{font:{size:10}}}}, plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:11}}}}}});
 }
@@ -1273,10 +990,10 @@ function adminReports(){
     <div class="panel-head"><div><h3>Reports</h3><div class="sub">Export a form's responses for department review</div></div></div>
     ${forms.length ? `<div class="field" style="max-width:360px;"><label>Form</label><select id="reportFormSelect">${forms.map(f=>`<option value="${f.id}">${escapeHtml(f.title)}</option>`).join('')}</select></div>
     <div class="row gap-12" style="margin-top:16px;">
-      <button class="btn btn-primary" data-action="export-csv">⬇ Download CSV</button>
-      <button class="btn btn-ghost" data-action="print-report">🖨 Print / Save as PDF</button>
+      <button class="btn btn-primary" data-action="export-csv">â¬‡ Download CSV</button>
+      <button class="btn btn-ghost" data-action="print-report">ðŸ–¨ Print / Save as PDF</button>
     </div>
-    <p style="font-size:12px;color:var(--ink-50);margin-top:12px;">CSV includes one row per response with every question answer as a column. Print opens a formatted report using your browser's print dialog — choose "Save as PDF" there for a PDF file.</p>
+    <p style="font-size:12px;color:var(--ink-50);margin-top:12px;">CSV includes one row per response with every question answer as a column. Print opens a formatted report using your browser's print dialog â€” choose "Save as PDF" there for a PDF file.</p>
     ` : `<div class="empty"><p>Create a feedback form first.</p></div>`}
   </div>`;
 }
@@ -1324,8 +1041,8 @@ function renderSuper(){
     <aside class="sidebar">
       <div class="sidebar-brand"><div class="brand-mark">FS</div>Feedback System</div>
       <div class="side-inst"><div class="name">Platform control</div><div class="code mono">SUPER ADMIN</div></div>
-      <nav class="side-nav"><button class="side-link active"><span class="side-ic">◧</span>Institutions</button></nav>
-      <div class="side-foot"><div class="side-user"><div class="avatar">SA</div><div><div class="u-name">Super Admin</div><div class="u-role">platform owner</div></div></div><a href="#" class="logout-link" data-action="logout">Sign out →</a></div>
+      <nav class="side-nav"><button class="side-link active"><span class="side-ic">â—§</span>Institutions</button></nav>
+      <div class="side-foot"><div class="side-user"><div class="avatar">SA</div><div><div class="u-name">Super Admin</div><div class="u-role">platform owner</div></div></div><a href="#" class="logout-link" data-action="logout">Sign out â†’</a></div>
     </aside>
     <main class="main">
       <div class="topbar"><div><h1>Institutions</h1><div class="sub">Every institution on the platform, isolated by row-level security</div></div>
@@ -1346,7 +1063,7 @@ function renderSuper(){
           <td><span class="badge ${i.status==='active'?'badge-teal':'badge-rust'}">${i.status}</span></td>
           <td><div class="row-actions">
             <button class="btn btn-ghost btn-sm" data-toggle-inst="${i.id}">${i.status==='active'?'Disable':'Enable'}</button>
-            <button class="icon-btn" data-delete-inst="${i.id}">🗑</button>
+            <button class="icon-btn" data-delete-inst="${i.id}">ðŸ—‘</button>
           </div></td></tr>`;
         }).join('')}
         </tbody></table></div>
@@ -1361,7 +1078,7 @@ function renderSuper(){
 function modalShell(title, bodyHtml, formId){
   return `<div class="modal-bg" data-close-on-bg="genericModal">
     <div class="modal">
-      <div class="modal-head"><h3>${title}</h3><button class="icon-btn" data-action="close-modal">✕</button></div>
+      <div class="modal-head"><h3>${title}</h3><button class="icon-btn" data-action="close-modal">âœ•</button></div>
       ${bodyHtml}
     </div></div>`;
 }
@@ -1547,7 +1264,7 @@ function syncBuilderQuestionsFromDOM(){
 function rerenderQuestionList(){
   const list = document.getElementById('questionList');
   if(!list) return;
-  list.innerHTML = builderQuestions.map((q,i)=>questionEditorRow(q,i,builderQuestions.length)).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">No questions yet — add your first one.</p>';
+  list.innerHTML = builderQuestions.map((q,i)=>questionEditorRow(q,i,builderQuestions.length)).join('') || '<p style="font-size:12.5px;color:var(--ink-50)">No questions yet â€” add your first one.</p>';
 }
 
 function exportFormCSV(formId){
@@ -1569,9 +1286,9 @@ function printReport(formId){
     const stu=DB.user(r.studentId), t=DB.teacher(r.teacherId);
     return `<tr><td>${escapeHtml(stu?stu.fullName:'')}</td><td>${escapeHtml(t?t.name:'')}</td><td>${fmtDateTime(r.submittedAt)}</td>${form.questions.map(q=>`<td>${escapeHtml(r.answers[q.id]||'')}</td>`).join('')}</tr>`;
   }).join('');
-  win.document.write(`<html><head><title>${escapeHtml(form.title)} — Report</title>
+  win.document.write(`<html><head><title>${escapeHtml(form.title)} â€” Report</title>
     <style>body{font-family:Arial,sans-serif;padding:30px;} h1{font-size:20px;} table{width:100%;border-collapse:collapse;margin-top:16px;} th,td{border:1px solid #ccc;padding:6px 8px;font-size:11px;text-align:left;} th{background:#eee;}</style>
-    </head><body><h1>${escapeHtml(form.title)}</h1><p>${responses.length} responses · generated ${fmtDateTime(nowISO())}</p>
+    </head><body><h1>${escapeHtml(form.title)}</h1><p>${responses.length} responses Â· generated ${fmtDateTime(nowISO())}</p>
     <table><thead><tr><th>Student</th><th>Faculty</th><th>Submitted</th>${form.questions.map(q=>`<th>${escapeHtml(q.text)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>
     </body></html>`);
   win.document.close(); win.focus(); win.print();
@@ -1592,7 +1309,7 @@ document.addEventListener('submit', (e)=>{
     if(missing.length){ toast('Please answer: ' + missing[0], 'err'); return; }
     DB.submitResponse({institutionId: state.session.institutionId, formId, teacherId, studentId: state.session.userId, answers});
     state.activeSubmission = null; render();
-    toast('Feedback recorded — thank you!');
+    toast('Feedback recorded â€” thank you!');
     return;
   }
 
@@ -1621,7 +1338,7 @@ document.addEventListener('submit', (e)=>{
       ],
       status:'published',
     });
-    state.modal=null; render(); toast(`Teacher added — login ${teacher.employeeId} / Temp@123`); return;
+    state.modal=null; render(); toast(`Teacher added â€” login ${teacher.employeeId} / Temp@123`); return;
   }
   if(form.id==='deptForm'){
     DB.createDepartment({institutionId: state.session.institutionId, name:form.name.value.trim(), hod:form.hod.value.trim()});
@@ -1632,14 +1349,14 @@ document.addEventListener('submit', (e)=>{
     if(DB.emailTaken(email)){ toast('That email is already in use', 'err'); return; }
     const reg = form.registerNumber.value.trim().toUpperCase();
     DB.createUser({institutionId: state.session.institutionId, role:'student', fullName:form.fullName.value.trim(), email, registerNumber:reg, loginId:reg, password:'Temp@123', department:form.department.value.trim(), year:form.year.value, section:form.section.value.trim(), phone:''});
-    state.modal=null; render(); toast(`Student added — login ${reg} / Temp@123`); return;
+    state.modal=null; render(); toast(`Student added â€” login ${reg} / Temp@123`); return;
   }
   if(form.id==='instForm'){
     const code = form.code.value.trim().toUpperCase();
     if(DB.institutionByCode(code)){ toast('That institution code is already taken', 'err'); return; }
     const inst = DB.createInstitution({name:form.name.value.trim(), code, email:form.email.value.trim(), plan:form.plan.value});
     DB.createUser({institutionId: inst.id, role:'admin', fullName:'Institution Admin', email:form.email.value.trim(), loginId:'ADMIN', password:form.password.value});
-    state.modal=null; render(); toast('Institution created — admin login: ADMIN / ' + form.password.value); return;
+    state.modal=null; render(); toast('Institution created â€” admin login: ADMIN / ' + form.password.value); return;
   }
   if(form.id==='instSettingsForm'){
     DB.updateInstitution(state.session.institutionId, {name:form.name.value.trim(), email:form.email.value.trim(), phone:form.phone.value.trim(), address:form.address.value.trim()});
@@ -1673,6 +1390,3 @@ document.addEventListener('submit', (e)=>{
   }
   render();
 })();
-</script>
-</body>
-</html>
